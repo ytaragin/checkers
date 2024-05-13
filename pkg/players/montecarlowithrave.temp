@@ -1,0 +1,167 @@
+package players
+
+import (
+	"fmt"
+	"math"
+)
+
+// Node represents a node in the MCTS search tree
+type Node struct {
+	state      GameState
+	parent     *Node
+	children   []*Node
+	visits     int
+	value      float64
+	rave       float64
+	raveVisits int
+}
+type MCMove struct {
+}
+
+// GameState represents the current state of the game
+type GameState struct {
+	// Define the relevant properties of the game state here
+	// For example, board configuration, player positions, scores, etc.
+}
+
+// GetPossibleMoves returns a slice of possible moves from the current game state
+func (state GameState) GetPossibleMoves() []MCMove {
+	// Implement the logic to generate a list of possible moves from the current state
+	// Return a slice of Move structs representing the possible moves
+	return nil
+}
+
+// PlayMove applies a given move to the current game state and returns the resulting state
+func (state GameState) PlayMove(move MCMove) GameState {
+	// Implement the logic to apply the given move to the current state
+	// Return the new game state after the move
+	return state
+}
+
+// EvaluateScore evaluates the score or outcome of the given game state
+func (state GameState) EvaluateScore() float64 {
+	// Implement the logic to evaluate the score or outcome of the game state
+	// Return a numerical value representing the score or outcome
+	return 0.0
+}
+
+// CreateRootNode creates the root node for the MCTS search tree
+func CreateRootNode(state GameState) *Node {
+	return &Node{
+		state: state,
+	}
+}
+
+// UCT computes the Upper Confidence Bounds (UCB) value for a node
+func (node *Node) UCT(totalVisits int, explorationWeight float64) float64 {
+	if node.visits == 0 {
+		return math.Inf(1)
+	}
+	return node.value/float64(node.visits) + explorationWeight*math.Sqrt(2*math.Log(float64(totalVisits))/float64(node.visits))
+}
+
+// RAVE computes the Rapid Action Value Estimation (RAVE) value for a node
+func (node *Node) RAVE(explorationWeight float64) float64 {
+	if node.raveVisits == 0 {
+		return node.value / float64(node.visits)
+	}
+	beta := explorationWeight / (1 + node.raveVisits)
+	return (1-beta)*node.value/float64(node.visits) + beta*node.rave/float64(node.raveVisits)
+}
+
+// Select selects the best child node based on UCT and RAVE values
+func (node *Node) Select(totalVisits int, explorationWeight float64) *Node {
+	var bestChild *Node
+	bestValue := -math.Inf(1)
+
+	for _, child := range node.children {
+		value := child.UCT(totalVisits, explorationWeight)
+		if value > bestValue {
+			bestValue = value
+			bestChild = child
+		}
+	}
+
+	if bestChild == nil {
+		panic("No child nodes found")
+	}
+
+	return bestChild
+}
+
+// Expand expands the current node by creating child nodes for each possible move
+func (node *Node) Expand() {
+	possibleMoves := node.state.GetPossibleMoves()
+	node.children = make([]*Node, len(possibleMoves))
+
+	for i, move := range possibleMoves {
+		childState := node.state.PlayMove(move)
+		node.children[i] = &Node{
+			state:  childState,
+			parent: node,
+		}
+	}
+}
+
+// BackPropagateValue backpropagates the value of a terminal state up the tree
+func (node *Node) BackPropagateValue(value float64) {
+	for n := node; n != nil; n = n.parent {
+		n.visits++
+		n.value += value
+		n.rave = (n.rave*float64(n.raveVisits) + value) / float64(n.raveVisits+1)
+		n.raveVisits++
+	}
+}
+
+// Simulate performs a Monte Carlo simulation from the current node
+func (node *Node) Simulate(explorationWeight float64) float64 {
+	currentState := node.state
+	totalVisits := node.visits
+
+	for !currentState.IsTerminal() {
+		if len(node.children) == 0 {
+			node.Expand()
+		}
+		node = node.Select(totalVisits, explorationWeight)
+		currentState = node.state
+		totalVisits += node.visits
+	}
+
+	value := currentState.EvaluateScore()
+	node.BackPropagateValue(value)
+	return value
+}
+
+// FindBestMove performs the MCTS search and returns the best move
+func (rootNode *Node) FindBestMove(iterations int, explorationWeight float64) MCMove {
+	for i := 0; i < iterations; i++ {
+		rootNode.Simulate(explorationWeight)
+	}
+
+	var bestChild *Node
+	bestVisits := 0
+
+	for _, child := range rootNode.children {
+		if child.visits > bestVisits {
+			bestVisits = child.visits
+			bestChild = child
+		}
+	}
+
+	if bestChild == nil {
+		panic("No best move found")
+	}
+
+	return bestChild.state.GetPreviousMove()
+}
+
+func main() {
+	initialState := GameState{
+		// Initialize the game state here
+	}
+	rootNode := CreateRootNode(initialState)
+	iterations := 10000
+	explorationWeight := 1.0
+	bestMove := rootNode.FindBestMove(iterations, explorationWeight)
+	fmt.Printf("Best move: %v\n", bestMove)
+}
