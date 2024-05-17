@@ -7,6 +7,8 @@ import (
 
 // import "fmt"
 
+type MoveList []Move
+
 type Move interface {
 	DoMove(b *Board) *Position
 	IsValid(b *Board, color PieceColor) bool
@@ -94,12 +96,12 @@ func (j JumpMove) IsInteresting(b *Board, afterRun bool) bool {
 }
 
 type MultiMove struct {
-	Moves []Move
+	Moves MoveList
 }
 
 func NewMultiMove() *MultiMove {
 	return &MultiMove{
-		Moves: []Move{},
+		Moves: MoveList{},
 	}
 }
 

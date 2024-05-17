@@ -50,6 +50,10 @@ func (g *Game) GetState() GameState {
 	return Ongoing
 }
 
+func (g *Game) MoveCount() int {
+	return g.moveCount
+}
+
 func (g *Game) NextTurn() board.PieceColor {
 	return g.nextTurn
 }

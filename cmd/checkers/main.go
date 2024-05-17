@@ -13,6 +13,7 @@ import (
 )
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 
 func main() {
 	flag.Parse()
@@ -24,14 +25,25 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-
 	runGame()
 	// hardcode()
+
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
+		return
+	}
+
 }
 
 func runGame() {
 
-	redPlayer := players.RandomPlayer{Color: board.Red}
+	// redPlayer := players.RandomPlayer{Color: board.Red}
+	redPlayer := players.MCPlayer{Color: board.Red}
 	// bluePlayer := players.RandomPlayer{Color: board.Blue}
 	bluePlayer := players.MCPlayer{Color: board.Blue}
 
@@ -41,7 +53,7 @@ func runGame() {
 	// runner.RunTillEnd()
 	// g.Dump()
 
-	players.RunMultiple(redPlayer, bluePlayer, 100)
+	players.RunMultiple(redPlayer, bluePlayer, 1)
 
 }
 

@@ -2,6 +2,7 @@ package players
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ytaragin/checkers/pkg/board"
 	"github.com/ytaragin/checkers/pkg/game"
@@ -57,14 +58,19 @@ func RunGame(game *game.Game, redPlayer Player, bluePlayer Player) *GameRunner {
 }
 
 func (gr *GameRunner) RunTillEnd() {
-
+	start := time.Now()
 	for gr.game.GetState() == game.Ongoing {
 		m := gr.players[gr.game.NextTurn()].GetMove(gr.game)
 		gr.game.RunMove(m)
 
-		// gr.game.Dump()
+		fmt.Println(m)
+		gr.game.Dump()
 
 	}
+
+	elapsed := time.Since(start)
+	timePerMove := (float64(elapsed) / 1e6) / float64(gr.game.MoveCount())
+	fmt.Printf("Time Per Move: %2f\n", timePerMove)
 
 	// switch gr.game.GetState() {
 	// case game.RedWin:

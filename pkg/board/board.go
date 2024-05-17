@@ -46,31 +46,33 @@ func (b *Board) createMoves(row, col int) Moves {
 	return moves
 }
 
-func (b *Board) GetAllLegalMovesForColor(color PieceColor) []Move {
-	moves := make([]Move, 0, 3)
+func (b *Board) GetAllLegalMovesForColor(color PieceColor) MoveList {
+	moves := make(MoveList, 0, 3)
 	onlyJumps := false
 
 	for row := 0; row < BoardRows; row++ {
 		for col := 0; col < BoardCols; col++ {
 			m, jumps := b.GetMovesForPosition(&Position{row, col}, color, onlyJumps)
-			if jumps == onlyJumps {
-				moves = append(moves, m...)
-			} else if jumps {
-				moves = m
-				onlyJumps = true
+			if len(m) > 0 {
+				if jumps == onlyJumps {
+					moves = append(moves, m...)
+				} else if jumps {
+					moves = m
+					onlyJumps = true
+				}
 			}
 		}
 	}
 	return moves
 }
 
-func (b *Board) GetMovesForPosition(pos *Position, color PieceColor, onlyJumps bool) ([]Move, bool) {
+func (b *Board) GetMovesForPosition(pos *Position, color PieceColor, onlyJumps bool) (MoveList, bool) {
 	p := b.Grid[pos.Row][pos.Col].Piece
 	if p == nil {
-		return []Move{}, false
+		return MoveList{}, false
 	}
 	if p.Color != color {
-		return []Move{}, false
+		return MoveList{}, false
 	}
 
 	mvs := &b.Grid[pos.Row][pos.Col].PossibleMoves
@@ -79,8 +81,8 @@ func (b *Board) GetMovesForPosition(pos *Position, color PieceColor, onlyJumps b
 	return b.getValidMoves(p, mvs, onlyJumps)
 }
 
-func (b *Board) getValidMoves(piece *Piece, moves *Moves, onlyJumps bool) ([]Move, bool) {
-	var validMoves []Move
+func (b *Board) getValidMoves(piece *Piece, moves *Moves, onlyJumps bool) (MoveList, bool) {
+	var validMoves MoveList
 	// var jumps []Move
 
 	// isKing := piece.IsKing
@@ -107,8 +109,8 @@ func (b *Board) getValidMoves(piece *Piece, moves *Moves, onlyJumps bool) ([]Mov
 	return validMoves, false
 }
 
-func (b *Board) getJumpMoves(piece *Piece, moves *Moves) []Move {
-	var jumps []Move
+func (b *Board) getJumpMoves(piece *Piece, moves *Moves) MoveList {
+	var jumps MoveList
 
 	if piece.IsKing {
 		jumps = b.filterJumps(moves.KingJumps, piece.Color)
@@ -116,7 +118,7 @@ func (b *Board) getJumpMoves(piece *Piece, moves *Moves) []Move {
 		jumps = b.filterJumps(moves.Jumps[piece.Color], piece.Color)
 	}
 
-	ret_jumps := []Move{}
+	ret_jumps := MoveList{}
 
 	for _, jump := range jumps {
 		b2 := *b
@@ -137,22 +139,25 @@ func (b *Board) getJumpMoves(piece *Piece, moves *Moves) []Move {
 	return ret_jumps
 }
 
-func (b *Board) filterJumps(jumps []JumpMove, color PieceColor) []Move {
-	var validJumps []Move
-	for _, jump := range jumps {
-		if jump.IsValid(b, color) {
-			validJumps = append(validJumps, jump)
+func (b *Board) filterJumps(jumps []JumpMove, color PieceColor) MoveList {
+	var validJumps MoveList
+	// for _, jump := range jumps {
+	for i := 0; i < len(jumps); i++ {
+		if jumps[i].IsValid(b, color) {
+			validJumps = append(validJumps, &jumps[i])
 		}
 	}
 	return validJumps
 }
 
-func (b *Board) filterPlainMoves(plainMoves []PlainMove, color PieceColor) []Move {
+func (b *Board) filterPlainMoves(plainMoves []PlainMove, color PieceColor) MoveList {
 	// fmt.Printf("Filtering %+v\n", plainMoves)
-	var validPlainMoves []Move
-	for _, move := range plainMoves {
-		if move.IsValid(b, color) {
-			validPlainMoves = append(validPlainMoves, move)
+	var validPlainMoves MoveList
+	// var validPlainMoves []Move
+	for i := 0; i < len(plainMoves); i++ {
+		// for _, move := range plainMoves {
+		if plainMoves[i].IsValid(b, color) {
+			validPlainMoves = append(validPlainMoves, &plainMoves[i])
 		}
 	}
 	return validPlainMoves

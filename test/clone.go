@@ -22,6 +22,32 @@ func cloneStruct(src interface{}) interface{} {
 	return dstValue.Interface()
 }
 
+func aTest() {
+	m1 := MyStruct{3, "hello"}
+	m2 := MyStruct{4, "there"}
+
+	ms := []MyStruct{m1, m2}
+
+	fmt.Printf("%+v\n", ms)
+
+	for _, i := range ms {
+		fmt.Printf("%+v\n", i)
+		i.Field1++
+		fmt.Printf("%+v\n", i)
+	}
+
+	fmt.Printf("%+v\n", ms)
+
+	for i := 0; i < len(ms); i++ {
+		fmt.Printf("%+v\n", ms[i])
+		ms[i].Field1++
+		fmt.Printf("%+v\n", ms[i])
+	}
+
+	fmt.Printf("%+v\n", ms)
+
+}
+
 func main() {
 	original := MyStruct{Field1: 42, Field2: "hello"}
 	clone := cloneStruct(original).(MyStruct)
@@ -36,4 +62,6 @@ func main() {
 	fmt.Println("\nAfter modification:")
 	fmt.Println("Original struct:", original)
 	fmt.Println("Cloned struct:", clone)
+
+	aTest()
 }
