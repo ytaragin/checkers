@@ -38,7 +38,7 @@ func RunMultiple(redPlayer Player, bluePlayer Player, amount int) {
 		if i%100 == 0 {
 			println("+")
 		} else if i%10 == 0 {
-			print(".")
+			print("#")
 		}
 
 	}
@@ -63,8 +63,13 @@ func (gr *GameRunner) RunTillEnd() {
 		m := gr.players[gr.game.NextTurn()].GetMove(gr.game)
 		gr.game.RunMove(m)
 
-		fmt.Println(m)
-		gr.game.Dump()
+		i := gr.game.MoveCount()
+		if i%10 == 0 {
+			fmt.Printf(".")
+		}
+
+		// fmt.Println(m)
+		// gr.game.Dump()
 
 	}
 

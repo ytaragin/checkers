@@ -1,13 +1,57 @@
 package players
 
 import (
-	"fmt"
 	"math"
+
+	"github.com/ytaragin/checkers/pkg/board"
+	"github.com/ytaragin/checkers/pkg/game"
 )
+
+type MCPlayerRave struct {
+	Color   board.PieceColor
+	Verbose bool
+}
+
+func (mcr MCPlayerRave) GetMove(g *game.Game) board.Move {
+
+	moves := g.GetLegalMoves()
+	if len(moves) == 1 {
+		return moves[0]
+	}
+
+	rootNode := mcr.CreateRootNode(&mcr, g)
+	iterations := 3000
+	explorationWeight := 1.0
+	bestMove := rootNode.findBestMove(iterations, explorationWeight)
+	// fmt.Printf("Best move: %v\n", bestMove)
+
+	return bestMove
+}
+
+func (mcr MCPlayerRave) EvaluateScore(g *game.Game) float64 {
+	score := 0.0
+	switch g.GetState() {
+	case game.RedWin:
+		if mcr.Color == board.Red {
+			score = 1
+		} else {
+			score = -1
+		}
+	case game.BlueWin:
+		if mcr.Color == board.Blue {
+			score = 1
+		} else {
+			score = -1
+		}
+	}
+	return score
+}
 
 // Node represents a node in the MCTS search tree
 type Node struct {
-	state      GameState
+	player     *MCPlayerRave
+	move       board.Move
+	state      game.Game
 	parent     *Node
 	children   []*Node
 	visits     int
@@ -18,37 +62,11 @@ type Node struct {
 type MCMove struct {
 }
 
-// GameState represents the current state of the game
-type GameState struct {
-	// Define the relevant properties of the game state here
-	// For example, board configuration, player positions, scores, etc.
-}
-
-// GetPossibleMoves returns a slice of possible moves from the current game state
-func (state GameState) GetPossibleMoves() []MCMove {
-	// Implement the logic to generate a list of possible moves from the current state
-	// Return a slice of Move structs representing the possible moves
-	return nil
-}
-
-// PlayMove applies a given move to the current game state and returns the resulting state
-func (state GameState) PlayMove(move MCMove) GameState {
-	// Implement the logic to apply the given move to the current state
-	// Return the new game state after the move
-	return state
-}
-
-// EvaluateScore evaluates the score or outcome of the given game state
-func (state GameState) EvaluateScore() float64 {
-	// Implement the logic to evaluate the score or outcome of the game state
-	// Return a numerical value representing the score or outcome
-	return 0.0
-}
-
 // CreateRootNode creates the root node for the MCTS search tree
-func CreateRootNode(state GameState) *Node {
+func (mcr MCPlayerRave) CreateRootNode(player *MCPlayerRave, g *game.Game) *Node {
 	return &Node{
-		state: state,
+		state:  *g,
+		player: player,
 	}
 }
 
@@ -65,7 +83,7 @@ func (node *Node) RAVE(explorationWeight float64) float64 {
 	if node.raveVisits == 0 {
 		return node.value / float64(node.visits)
 	}
-	beta := explorationWeight / (1 + node.raveVisits)
+	beta := explorationWeight / float64(1+node.raveVisits)
 	return (1-beta)*node.value/float64(node.visits) + beta*node.rave/float64(node.raveVisits)
 }
 
@@ -90,21 +108,24 @@ func (node *Node) Select(totalVisits int, explorationWeight float64) *Node {
 }
 
 // Expand expands the current node by creating child nodes for each possible move
-func (node *Node) Expand() {
-	possibleMoves := node.state.GetPossibleMoves()
+func (node *Node) expand() {
+	possibleMoves := node.state.GetLegalMoves()
 	node.children = make([]*Node, len(possibleMoves))
 
 	for i, move := range possibleMoves {
-		childState := node.state.PlayMove(move)
+		childState := node.state
+		childState.RunMove(move)
 		node.children[i] = &Node{
 			state:  childState,
+			player: node.player,
+			move:   move,
 			parent: node,
 		}
 	}
 }
 
 // BackPropagateValue backpropagates the value of a terminal state up the tree
-func (node *Node) BackPropagateValue(value float64) {
+func (node *Node) backPropagateValue(value float64) {
 	for n := node; n != nil; n = n.parent {
 		n.visits++
 		n.value += value
@@ -114,32 +135,32 @@ func (node *Node) BackPropagateValue(value float64) {
 }
 
 // Simulate performs a Monte Carlo simulation from the current node
-func (node *Node) Simulate(explorationWeight float64) float64 {
+func (node *Node) simulate(explorationWeight float64) float64 {
 	currentState := node.state
 	totalVisits := node.visits
 
-	for !currentState.IsTerminal() {
+	for currentState.GetState() == game.Ongoing {
 		if len(node.children) == 0 {
-			node.Expand()
+			node.expand()
 		}
 		node = node.Select(totalVisits, explorationWeight)
 		currentState = node.state
 		totalVisits += node.visits
 	}
 
-	value := currentState.EvaluateScore()
-	node.BackPropagateValue(value)
+	value := node.player.EvaluateScore(&node.state)
+	node.backPropagateValue(value)
 	return value
 }
 
 // FindBestMove performs the MCTS search and returns the best move
-func (rootNode *Node) FindBestMove(iterations int, explorationWeight float64) MCMove {
+func (rootNode *Node) findBestMove(iterations int, explorationWeight float64) board.Move {
 	for i := 0; i < iterations; i++ {
-		rootNode.Simulate(explorationWeight)
+		rootNode.simulate(explorationWeight)
 	}
 
 	var bestChild *Node
-	bestVisits := 0
+	bestVisits := -5
 
 	for _, child := range rootNode.children {
 		if child.visits > bestVisits {
@@ -152,16 +173,5 @@ func (rootNode *Node) FindBestMove(iterations int, explorationWeight float64) MC
 		panic("No best move found")
 	}
 
-	return bestChild.state.GetPreviousMove()
-}
-
-func main() {
-	initialState := GameState{
-		// Initialize the game state here
-	}
-	rootNode := CreateRootNode(initialState)
-	iterations := 10000
-	explorationWeight := 1.0
-	bestMove := rootNode.FindBestMove(iterations, explorationWeight)
-	fmt.Printf("Best move: %v\n", bestMove)
+	return bestChild.move
 }

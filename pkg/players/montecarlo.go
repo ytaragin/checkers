@@ -16,7 +16,11 @@ type MCPlayer struct {
 
 func (mc MCPlayer) GetMove(g *game.Game) board.Move {
 
-	iterations := 10000
+	moves := g.GetLegalMoves()
+	if len(moves) == 1 {
+		return moves[0]
+	}
+	iterations := 3000
 	bestMove := mc.GetBestMove(g, iterations)
 
 	return bestMove
