@@ -9,9 +9,18 @@ const BoardCols int = 8
 const RedDirection int = 1
 const BlueDirection int = -1
 
+var AllPositionList []*Position
+var AllMovesList [64]Moves
+
 // Board represents the checkers board
 type Board struct {
-	Grid [BoardRows][BoardCols]Spot
+	// Grid [BoardRows][BoardCols]Spot
+	RedMask  uint64
+	BlueMask uint64
+	Kings    uint64
+	Invalid  uint64
+	// AllMoves     [64]Moves
+	// AllPositions []*Position
 }
 
 // NewBoard creates and initializes a new checkers board
@@ -50,32 +59,42 @@ func (b *Board) GetAllLegalMovesForColor(color PieceColor) MoveList {
 	moves := make(MoveList, 0, 3)
 	onlyJumps := false
 
-	for row := 0; row < BoardRows; row++ {
-		for col := 0; col < BoardCols; col++ {
-			m, jumps := b.GetMovesForPosition(&Position{row, col}, color, onlyJumps)
-			if len(m) > 0 {
-				if jumps == onlyJumps {
-					moves = append(moves, m...)
-				} else if jumps {
-					moves = m
-					onlyJumps = true
-				}
+	for _, pos := range AllPositionList {
+		if b.isSpotEmpty(pos) {
+			continue
+		}
+		if !isBitSetByPos(*b.getColorMask(color), pos) {
+			continue
+		}
+		m, jumps := b.GetMovesForPosition(pos, color, onlyJumps)
+		if len(m) > 0 {
+			if jumps == onlyJumps {
+				moves = append(moves, m...)
+			} else if jumps {
+				moves = m
+				onlyJumps = true
 			}
 		}
 	}
 	return moves
 }
 
-func (b *Board) GetMovesForPosition(pos *Position, color PieceColor, onlyJumps bool) (MoveList, bool) {
-	p := b.Grid[pos.Row][pos.Col].Piece
-	if p == nil {
-		return MoveList{}, false
+func (b *Board) getColorMask(color PieceColor) *uint64 {
+	if color == Blue {
+		return &b.BlueMask
 	}
-	if p.Color != color {
-		return MoveList{}, false
-	}
+	return &b.RedMask
+}
 
-	mvs := &b.Grid[pos.Row][pos.Col].PossibleMoves
+func (b *Board) GetMovesForPosition(pos *Position, color PieceColor, onlyJumps bool) (MoveList, bool) {
+
+	p := b.GetPiece(pos)
+	//
+	// if p == nil || p.Color != color {
+	// 	return MoveList{}, false
+	// }
+
+	mvs := &AllMovesList[getMaskSpot(pos.Row, pos.Col)]
 	// fmt.Printf("Moves are: %+v\n", mvs)
 
 	return b.getValidMoves(p, mvs, onlyJumps)
@@ -140,6 +159,7 @@ func (b *Board) getJumpMoves(piece *Piece, moves *Moves) MoveList {
 }
 
 func (b *Board) filterJumps(jumps []JumpMove, color PieceColor) MoveList {
+	// var validJumps = make(MoveList, 0, 2)
 	var validJumps MoveList
 	// for _, jump := range jumps {
 	for i := 0; i < len(jumps); i++ {
@@ -153,6 +173,7 @@ func (b *Board) filterJumps(jumps []JumpMove, color PieceColor) MoveList {
 func (b *Board) filterPlainMoves(plainMoves []PlainMove, color PieceColor) MoveList {
 	// fmt.Printf("Filtering %+v\n", plainMoves)
 	var validPlainMoves MoveList
+	// var validPlainMoves = make(MoveList, 0, 2)
 	// var validPlainMoves []Move
 	for i := 0; i < len(plainMoves); i++ {
 		// for _, move := range plainMoves {
@@ -164,33 +185,63 @@ func (b *Board) filterPlainMoves(plainMoves []PlainMove, color PieceColor) MoveL
 }
 
 func (b *Board) GetPiece(pos *Position) *Piece {
-	return b.Grid[pos.Row][pos.Col].Piece
+	return b.getPieceByMask(pos.mask)
 }
 
 func (b *Board) KingMe(pos *Position) bool {
-	if b.Grid[pos.Row][pos.Col].Piece.IsKing {
-		return false
-	}
-	switch b.Grid[pos.Row][pos.Col].Piece.Color {
-	case Red:
-		b.Grid[pos.Row][pos.Col].Piece = RedKingPiece
-	case Blue:
-		b.Grid[pos.Row][pos.Col].Piece = BlueKingPiece
+	setBitByPos(&b.Kings, pos)
+	return true
+}
+
+func (b *Board) setPiece(pos *Position, piece *Piece) bool {
+	mask := b.getColorMask(piece.Color)
+
+	setBitByPos(mask, pos)
+	if piece.IsKing {
+		setBitByPos(&b.Kings, pos)
 	}
 
 	return true
 }
 
-func (b *Board) setPiece(pos *Position, piece *Piece) bool {
-	f := b.Grid[pos.Row][pos.Col].Piece
-	b.Grid[pos.Row][pos.Col].Piece = piece
-	return f == nil
+func (b *Board) getPieceByMask(mask uint64) *Piece {
+	var p *Piece
+	if isBitSetByMask(b.RedMask, mask) {
+		if isBitSetByMask(b.Kings, mask) {
+			p = RedKingPiece
+		} else {
+			p = RedNormalPiece
+		}
+	} else if isBitSetByMask(b.BlueMask, mask) {
+		if isBitSetByMask(b.Kings, mask) {
+			p = BlueKingPiece
+		} else {
+			p = BlueNormalPiece
+		}
+	}
+	return p
 }
 
 func (b *Board) removePiece(pos *Position) *Piece {
-	f := b.Grid[pos.Row][pos.Col].Piece
-	b.Grid[pos.Row][pos.Col].Piece = nil
-	return f
+	var p *Piece
+	if isBitSetByPos(b.RedMask, pos) {
+		if isBitSetByPos(b.Kings, pos) {
+			p = RedKingPiece
+		} else {
+			p = RedNormalPiece
+		}
+		clearBitByPos(&b.RedMask, pos)
+	} else if isBitSetByPos(b.BlueMask, pos) {
+		if isBitSetByPos(b.Kings, pos) {
+			p = BlueKingPiece
+		} else {
+			p = BlueNormalPiece
+		}
+		clearBitByPos(&b.BlueMask, pos)
+	}
+
+	clearBitByPos(&b.Kings, pos)
+	return p
 }
 
 func (b *Board) movePiece(start *Position, end *Position) *Piece {
@@ -204,8 +255,11 @@ func (b *Board) movePiece(start *Position, end *Position) *Piece {
 	return p
 }
 
-func (b *Board) isSpotEmpty(spot *Position) bool {
-	return b.Grid[spot.Row][spot.Col].Piece == nil
+func (b *Board) isSpotEmpty(pos *Position) bool {
+	// posSetred := isBitSetByPos(b.Red, pos)
+	// posSetblue := isBitSetByPos(b.Blue, pos)
+	// return posSetred && posSetblue
+	return !isBitSetByPos(b.RedMask, pos) && !isBitSetByPos(b.BlueMask, pos)
 }
 
 func (b *Board) addPieces(row_start, row_end int, piece *Piece) {
@@ -216,7 +270,7 @@ func (b *Board) addPieces(row_start, row_end int, piece *Piece) {
 			j_start = 1
 		}
 		for col := j_start; col < BoardCols; col += 2 {
-			b.Grid[row][col].Piece = piece
+			setBit(b.getColorMask(piece.Color), row, col)
 		}
 	}
 
@@ -224,21 +278,17 @@ func (b *Board) addPieces(row_start, row_end int, piece *Piece) {
 
 // initializeBoard initializes the checkers board with the proper checkers setup
 func (b *Board) initializeBoard() {
+
+	AllPositionList = make([]*Position, 0, 32)
+
 	// Initialize spots
 	for row := 0; row < BoardRows; row++ {
 		for col := 0; col < BoardCols; col++ {
-			if (row+col)%2 == 0 {
-				b.Grid[row][col] = Spot{
-					State:         Invalid,
-					Piece:         nil,
-					PossibleMoves: Moves{},
-				}
+			if (row+col)%2 != 0 {
+				AllMovesList[getMaskSpot(row, col)] = b.createMoves(row, col)
+				AllPositionList = append(AllPositionList, NewPosition(row, col))
 			} else {
-				b.Grid[row][col] = Spot{
-					State:         Valid,
-					Piece:         nil,
-					PossibleMoves: b.createMoves(row, col),
-				}
+				setBitByMask(&b.Invalid, getMaskForPosition(row, col))
 			}
 		}
 	}
@@ -250,7 +300,7 @@ func (b *Board) initializeBoard() {
 	b.addPieces(BoardRows-3, BoardRows-1, BlueNormalPiece)
 }
 
-func (b *Board) Dump() {
+func (b *Board) Dump(start *Position, last *Position) {
 
 	fmt.Printf("  ")
 	for i := 0; i < BoardRows; i++ {
@@ -260,16 +310,27 @@ func (b *Board) Dump() {
 	for i := 0; i < BoardRows; i++ {
 		fmt.Printf("%d ", i)
 		for j := 0; j < BoardCols; j++ {
-			if b.Grid[i][j].State == Invalid {
+			mask := getMaskForPosition(i, j)
+			p := b.getPieceByMask(mask)
+			if isBitSetByMask(b.Invalid, mask) {
 				fmt.Print("   ")
-			} else if b.Grid[i][j].Piece == nil {
-				fmt.Print("-  ")
+			} else if p == nil {
+				fmt.Print("- ")
+				printMark(i, j, start)
 			} else {
-				b.Grid[i][j].Piece.Dump() // Call Piece.Dump() method
-				fmt.Print(" ")
+				p.Dump() // Call Piece.Dump() method
+				printMark(i, j, last)
 			}
 		}
 		fmt.Println()
 
+	}
+}
+
+func printMark(row, col int, pos *Position) {
+	if pos != nil && pos.Row == row && pos.Col == col {
+		fmt.Print("<")
+	} else {
+		fmt.Print(" ")
 	}
 }

@@ -13,7 +13,7 @@ type GameRunner struct {
 	game    *game.Game
 }
 
-func RunMultiple(redPlayer Player, bluePlayer Player, amount int) {
+func RunMultiple(redPlayer Player, bluePlayer Player, amount int, printPerStep bool) {
 	redWins := 0
 	blueWins := 0
 	draws := 0
@@ -24,7 +24,7 @@ func RunMultiple(redPlayer Player, bluePlayer Player, amount int) {
 		// g.Dump()
 
 		runner := RunGame(g, redPlayer, bluePlayer)
-		runner.RunTillEnd()
+		runner.RunTillEnd(printPerStep)
 
 		switch g.GetState() {
 		case game.Draw:
@@ -39,6 +39,7 @@ func RunMultiple(redPlayer Player, bluePlayer Player, amount int) {
 			println("+")
 		} else if i%10 == 0 {
 			print("#")
+			fmt.Printf("Red Wins: %d Blue Wins: %d Draws: %d\n", redWins, blueWins, draws)
 		}
 
 	}
@@ -57,7 +58,7 @@ func RunGame(game *game.Game, redPlayer Player, bluePlayer Player) *GameRunner {
 	return runner
 }
 
-func (gr *GameRunner) RunTillEnd() {
+func (gr *GameRunner) RunTillEnd(printPerStep bool) {
 	start := time.Now()
 	for gr.game.GetState() == game.Ongoing {
 		m := gr.players[gr.game.NextTurn()].GetMove(gr.game)
@@ -67,15 +68,17 @@ func (gr *GameRunner) RunTillEnd() {
 		if i%10 == 0 {
 			fmt.Printf(".")
 		}
-
-		// fmt.Println(m)
-		// gr.game.Dump()
+		if printPerStep {
+			fmt.Println(m)
+			gr.game.Dump()
+		}
 
 	}
 
 	elapsed := time.Since(start)
-	timePerMove := (float64(elapsed) / 1e6) / float64(gr.game.MoveCount())
-	fmt.Printf("Time Per Move: %2f\n", timePerMove)
+	shifted := (float64(elapsed) / 1e6)
+	timePerMove := shifted / float64(gr.game.MoveCount())
+	fmt.Printf("Winner: %s Moves: %d Time: %2f Time Per Move: %2f\n", gr.game.GetWinner().Name(), gr.game.MoveCount(), shifted, timePerMove)
 
 	// switch gr.game.GetState() {
 	// case game.RedWin:

@@ -20,7 +20,7 @@ func (mc MCPlayer) GetMove(g *game.Game) board.Move {
 	if len(moves) == 1 {
 		return moves[0]
 	}
-	iterations := 3000
+	iterations := 5000
 	bestMove := mc.GetBestMove(g, iterations)
 
 	return bestMove
@@ -70,7 +70,7 @@ func (mc MCPlayer) EvaluateScore(g *game.Game) float64 {
 	return score
 }
 
-func GetRandomMove(g *game.Game) board.Move {
+func (mc MCPlayer) GetRandomMove(g *game.Game) board.Move {
 	moves := g.GetLegalMoves()
 	randomIndex := rand.Intn(len(moves))
 
@@ -86,7 +86,7 @@ func (mc MCPlayer) RunMonteCarlo(g *game.Game, move board.Move, iterations int) 
 		gtemp := *g
 		gtemp.RunMove(move)
 		for gtemp.GetState() == game.Ongoing {
-			gtemp.RunMove(GetRandomMove(&gtemp))
+			gtemp.RunMove(mc.GetRandomMove(&gtemp))
 		}
 		totalScore += mc.EvaluateScore(&gtemp)
 	}
@@ -120,7 +120,7 @@ func (mc MCPlayer) RunMonteCarloMT(g *game.Game, move board.Move, iterations int
 				gtemp.RunMove(move)
 
 				for gtemp.GetState() == game.Ongoing {
-					gtemp.RunMove(GetRandomMove(&gtemp))
+					gtemp.RunMove(mc.GetRandomMove(&gtemp))
 				}
 
 				workerScore += mc.EvaluateScore(&gtemp)

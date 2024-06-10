@@ -57,6 +57,11 @@ var (
 
 type Position struct {
 	Row, Col int
+	mask     uint64
+}
+
+func NewPosition(row, col int) *Position {
+	return &Position{row, col, getMaskForPosition(row, col)}
 }
 
 func (p Position) String() string {

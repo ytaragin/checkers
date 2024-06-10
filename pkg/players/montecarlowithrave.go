@@ -20,7 +20,7 @@ func (mcr MCPlayerRave) GetMove(g *game.Game) board.Move {
 	}
 
 	rootNode := mcr.CreateRootNode(&mcr, g)
-	iterations := 3000
+	iterations := 5000
 	explorationWeight := 1.0
 	bestMove := rootNode.findBestMove(iterations, explorationWeight)
 	// fmt.Printf("Best move: %v\n", bestMove)

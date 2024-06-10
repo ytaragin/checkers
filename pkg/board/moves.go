@@ -21,6 +21,14 @@ type PlainMove struct {
 	Start, End Position
 }
 
+func CreatePlainMove(startrow, startcol, endrow, endcol int) PlainMove {
+	return PlainMove{
+		Start: *NewPosition(startrow, startcol),
+		End:   *NewPosition(endrow, endcol),
+	}
+
+}
+
 func (pm PlainMove) String() string {
 	return fmt.Sprintf("{%s>%s}", pm.Start, pm.End)
 }
@@ -35,7 +43,10 @@ func (pm PlainMove) GetEnd() *Position {
 
 func (pm PlainMove) IsValid(b *Board, color PieceColor) bool {
 	p := b.GetPiece(&pm.Start)
+	// empty := b.isSpotEmpty(&pm.End)
+
 	return b.isSpotEmpty(&pm.End) &&
+		// return empty &&
 		(p != nil && p.Color == color)
 }
 
@@ -60,8 +71,22 @@ func (pm PlainMove) IsInteresting(b *Board, afterRun bool) bool {
 
 // JumpMove represents a possible move for a piece
 type JumpMove struct {
-	Jump Position
-	Move PlainMove
+	Jump     Position
+	Move     PlainMove
+	jumpmask uint64
+}
+
+func CreateJump(row, col, skiprow, skipcol, newrow, newcol int) *JumpMove {
+	m := CreateMove(row, col, newrow, newcol)
+	if m != nil {
+		j := &JumpMove{
+			Move:     *m,
+			Jump:     *NewPosition(skiprow, skipcol),
+			jumpmask: getMaskForPosition(skiprow, skipcol),
+		}
+		return j
+	}
+	return nil
 }
 
 func (j JumpMove) String() string {
@@ -77,6 +102,7 @@ func (j JumpMove) GetEnd() *Position {
 }
 
 func (j JumpMove) IsValid(b *Board, color PieceColor) bool {
+
 	p := b.GetPiece(&j.Move.Start)
 	jspot := b.GetPiece(&j.Jump)
 	return b.isSpotEmpty(&j.Move.End) &&
@@ -157,10 +183,9 @@ func (mjm MultiMove) IsInteresting(b *Board, afterRun bool) bool {
 func CreateMove(row, col, newrow, newcol int) *PlainMove {
 	if newcol >= 0 && newcol < BoardCols && newrow >= 0 && newrow < BoardRows {
 		return &PlainMove{
-			Start: Position{Row: row, Col: col},
-			End:   Position{Row: newrow, Col: newcol},
+			Start: *NewPosition(row, col),
+			End:   *NewPosition(newrow, newcol),
 		}
-
 	}
 
 	return nil
@@ -169,12 +194,7 @@ func CreateMove(row, col, newrow, newcol int) *PlainMove {
 func createAppendMove(row, col, newrow, newcol int, moves []PlainMove) []PlainMove {
 	m := CreateMove(row, col, newrow, newcol)
 	if m != nil {
-		moves = append(moves,
-			PlainMove{
-				Start: Position{Row: row, Col: col},
-				End:   Position{Row: newrow, Col: newcol},
-			},
-		)
+		moves = append(moves, *m)
 	}
 
 	return moves
@@ -193,23 +213,6 @@ func createKingMoves(row, col int, moves []PlainMove) []PlainMove {
 
 	return moves
 }
-
-func CreateJump(row, col, skiprow, skipcol, newrow, newcol int) *JumpMove {
-
-	m := CreateMove(row, col, newrow, newcol)
-	if m != nil {
-
-		j := &JumpMove{
-			Move: *m,
-			Jump: Position{Row: skiprow, Col: skipcol},
-		}
-
-		return j
-	}
-	return nil
-
-}
-
 func createAppendJump(row, col, skiprow, skipcol, newrow, newcol int, jumps []JumpMove) []JumpMove {
 	j := CreateJump(row, col, skiprow, skipcol, newrow, newcol)
 	if j != nil {

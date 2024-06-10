@@ -21,6 +21,7 @@ type Game struct {
 	nextLegalMoves            []board.Move
 	countSinceLastInteresting int
 	moveCount                 int
+	lastMove                  board.Move
 }
 
 func NewGame() *Game {
@@ -34,6 +35,17 @@ func NewGame() *Game {
 	}
 
 	return game
+}
+
+func (g *Game) Copy() *Game {
+	return &Game{
+		gameboard:                 g.gameboard,
+		nextTurn:                  g.nextTurn,
+		nextLegalMoves:            g.nextLegalMoves,
+		countSinceLastInteresting: g.countSinceLastInteresting,
+		moveCount:                 g.moveCount,
+		lastMove:                  g.lastMove,
+	}
 }
 
 func (g *Game) GetState() GameState {
@@ -80,6 +92,7 @@ func (g *Game) RunMove(m board.Move) {
 	g.nextTurn = g.nextTurn.NextColor()
 	g.nextLegalMoves = g.gameboard.GetAllLegalMovesForColor(g.nextTurn)
 	g.moveCount++
+	g.lastMove = m
 
 }
 
@@ -92,7 +105,7 @@ func (g *Game) isCurrentLosing() bool {
 }
 
 func (g *Game) Dump() {
-	g.gameboard.Dump()
+	g.gameboard.Dump(g.lastMove.GetStart(), g.lastMove.GetEnd())
 	fmt.Printf("Next: %s Count: %d Int: %d\n", g.nextTurn.Name(), g.moveCount, g.countSinceLastInteresting)
 
 }
