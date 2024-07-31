@@ -197,7 +197,7 @@ func (b *Board) KingMe(pos *Position) bool {
 	return true
 }
 
-func (b *Board) setPiece(pos *Position, piece *Piece) bool {
+func (b *Board) SetPiece(pos *Position, piece *Piece) bool {
 	mask := b.getColorMask(piece.Color)
 
 	setBitByPos(mask, pos)
@@ -253,7 +253,7 @@ func (b *Board) movePiece(start *Position, end *Position) *Piece {
 	p := b.removePiece(start)
 	if p != nil {
 		// fmt.Printf("Setting %+v to %+v\n", p, end)
-		b.setPiece(end, p)
+		b.SetPiece(end, p)
 	}
 
 	return p
