@@ -37,6 +37,17 @@ func NewGame() *Game {
 	return game
 }
 
+func InitGameFromBoard(b *board.Board, nextTurn board.PieceColor, sinceIntersting int) *Game {
+	return &Game{
+		gameboard:                 *b,
+		nextTurn:                  nextTurn,
+		nextLegalMoves:            b.GetAllLegalMovesForColor(nextTurn),
+		countSinceLastInteresting: sinceIntersting,
+		moveCount:                 1,
+		lastMove:                  board.CreatePlainMove(0, 0, 1, 1),
+	}
+}
+
 func (g *Game) Copy() *Game {
 	return &Game{
 		gameboard:                 g.gameboard,

@@ -30,6 +30,10 @@ func NewBoard() *Board {
 	return board
 }
 
+func NewEmptyBoard() *Board {
+	return &Board{}
+}
+
 func (b *Board) createMoves(row, col int) Moves {
 	// Create a new Moves instance
 	moves := Moves{
