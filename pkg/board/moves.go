@@ -15,6 +15,7 @@ type Move interface {
 	IsInteresting(b *Board, afterRun bool) bool
 	GetStart() *Position
 	GetEnd() *Position
+	GetJumpedPositions() []*Position
 }
 
 type PlainMove struct {
@@ -39,6 +40,10 @@ func (pm PlainMove) GetStart() *Position {
 
 func (pm PlainMove) GetEnd() *Position {
 	return &pm.End
+}
+
+func (pm PlainMove) GetJumpedPositions() []*Position {
+	return []*Position{}
 }
 
 func (pm PlainMove) IsValid(b *Board, color PieceColor) bool {
@@ -101,6 +106,10 @@ func (j JumpMove) GetEnd() *Position {
 	return &j.Move.End
 }
 
+func (j JumpMove) GetJumpedPositions() []*Position {
+	return []*Position{&j.Jump}
+}
+
 func (j JumpMove) IsValid(b *Board, color PieceColor) bool {
 
 	p := b.GetPiece(&j.Move.Start)
@@ -154,6 +163,17 @@ func (mjm MultiMove) GetStart() *Position {
 
 func (mjm MultiMove) GetEnd() *Position {
 	return mjm.Moves[len(mjm.Moves)-1].GetEnd()
+}
+
+func (mjm MultiMove) GetJumpedPositions() []*Position {
+	var allJumpedPositions []*Position
+
+	for _, move := range mjm.Moves {
+		jumpedPositions := move.GetJumpedPositions()
+		allJumpedPositions = append(allJumpedPositions, jumpedPositions...)
+	}
+
+	return allJumpedPositions
 }
 
 func (mjm MultiMove) IsValid(b *Board, color PieceColor) bool {
