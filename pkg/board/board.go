@@ -12,6 +12,24 @@ const BlueDirection int = -1
 var AllPositionList []*Position
 var AllMovesList [64]Moves
 
+func init() {
+
+	b := NewEmptyBoard()
+	AllPositionList = make([]*Position, 0, 32)
+
+	// Initialize spots
+	for row := 0; row < BoardRows; row++ {
+		for col := 0; col < BoardCols; col++ {
+			if (row+col)%2 != 0 {
+				AllMovesList[getMaskSpot(row, col)] = b.createMoves(row, col)
+				AllPositionList = append(AllPositionList, NewPosition(row, col))
+			} else {
+				setBitByMask(&b.Invalid, getMaskForPosition(row, col))
+			}
+		}
+	}
+}
+
 // Board represents the checkers board
 type Board struct {
 	// Grid [BoardRows][BoardCols]Spot
@@ -283,19 +301,19 @@ func (b *Board) addPieces(row_start, row_end int, piece *Piece) {
 // initializeBoard initializes the checkers board with the proper checkers setup
 func (b *Board) initializeBoard() {
 
-	AllPositionList = make([]*Position, 0, 32)
-
-	// Initialize spots
-	for row := 0; row < BoardRows; row++ {
-		for col := 0; col < BoardCols; col++ {
-			if (row+col)%2 != 0 {
-				AllMovesList[getMaskSpot(row, col)] = b.createMoves(row, col)
-				AllPositionList = append(AllPositionList, NewPosition(row, col))
-			} else {
-				setBitByMask(&b.Invalid, getMaskForPosition(row, col))
-			}
-		}
-	}
+	// AllPositionList = make([]*Position, 0, 32)
+	//
+	// // Initialize spots
+	// for row := 0; row < BoardRows; row++ {
+	// 	for col := 0; col < BoardCols; col++ {
+	// 		if (row+col)%2 != 0 {
+	// 			AllMovesList[getMaskSpot(row, col)] = b.createMoves(row, col)
+	// 			AllPositionList = append(AllPositionList, NewPosition(row, col))
+	// 		} else {
+	// 			setBitByMask(&b.Invalid, getMaskForPosition(row, col))
+	// 		}
+	// 	}
+	// }
 
 	// mvs := &b.Grid[5][2]
 	// fmt.Printf("Moves are: %+v\n", mvs)
