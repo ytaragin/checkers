@@ -100,8 +100,10 @@ func (mc MCSTPlayer) GetBestMove(g *game.Game) board.Move {
 		}
 	}
 	if mc.Verbose {
-		fmt.Printf("Iterations: %d, %s: %4f\n",
+		fmt.Printf("Iterations: %d, Visits: %d WinCount: %d %s: %.4f\n",
 			count,
+			bestChild.VisitCount,
+			bestChild.WinCount,
 			mc.SelectionAlgorithm.StatName(),
 			mc.SelectionAlgorithm.SelectStat(bestChild))
 	}
@@ -205,7 +207,7 @@ func (node *MCSTNode) BackPropagate(endState game.GameState) {
 				n.WinCount++
 			}
 		case game.Draw:
-			n.WinCount += 0.5
+			n.WinCount += 0.0
 		}
 		n = n.Parent
 	}
