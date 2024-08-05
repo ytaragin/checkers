@@ -4,14 +4,46 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"time"
 
 	"github.com/ytaragin/checkers/pkg/board"
 	"github.com/ytaragin/checkers/pkg/game"
 )
 
+type ChildStatSelecter interface {
+	SelectStat(child *MCSTNode) float64
+	StatName() string
+}
+
+type MostVisitsSelector struct{}
+
+func (mv MostVisitsSelector) SelectStat(child *MCSTNode) float64 {
+	return float64(child.VisitCount)
+}
+func (mv MostVisitsSelector) StatName() string {
+	return "Visits"
+}
+
+type WinRateSelector struct{}
+
+func (mv WinRateSelector) SelectStat(child *MCSTNode) float64 {
+	return child.WinCount / float64(child.VisitCount)
+}
+func (mv WinRateSelector) StatName() string {
+	return "WinRate"
+}
+
+var (
+	WinRate    ChildStatSelecter = WinRateSelector{}
+	MostVisits ChildStatSelecter = MostVisitsSelector{}
+)
+
 type MCSTPlayer struct {
-	Color   board.PieceColor
-	Verbose bool
+	Color              board.PieceColor
+	SelectionAlgorithm ChildStatSelecter
+	Iterations         int
+	Duration           time.Duration
+	Verbose            bool
 }
 
 func (mc MCSTPlayer) GetMove(g *game.Game) board.Move {
@@ -20,13 +52,21 @@ func (mc MCSTPlayer) GetMove(g *game.Game) board.Move {
 	if len(moves) == 1 {
 		return moves[0]
 	}
-	iterations := 50000
-	bestMove := mc.GetBestMove(g, iterations)
+
+	if mc.Duration == 0 && mc.Iterations == 0 {
+		mc.Iterations = 50000
+		fmt.Printf("No Iterations or Duration set. Will run %d iterations", mc.Iterations)
+	}
+
+	// iterations := 50000
+	// bestMove := mc.GetBestMove(g, iterations)
+	bestMove := mc.GetBestMove(g)
 
 	return bestMove
 }
 
-func (mc MCSTPlayer) GetBestMove(g *game.Game, iterations int) board.Move {
+// func (mc MCSTPlayer) GetBestMove(g *game.Game, iterations int, d time.Duration) board.Move {
+func (mc MCSTPlayer) GetBestMove(g *game.Game) board.Move {
 	rootNode := &MCSTNode{
 		State: g,
 		// Player: node.player,
@@ -34,22 +74,37 @@ func (mc MCSTPlayer) GetBestMove(g *game.Game, iterations int) board.Move {
 		Parent:   nil,
 		Children: nil,
 	}
+	count := 0
 
-	for i := 0; i < iterations; i++ {
-		rootNode.RunLoop()
+	if mc.Iterations > 0 {
+		for i := 0; i < mc.Iterations; i++ {
+			rootNode.RunLoop()
+		}
+		count = mc.Iterations
+	} else {
+		endTime := time.Now().Add(mc.Duration)
+		for time.Now().Before(endTime) {
+			rootNode.RunLoop()
+			count++
+		}
 	}
 
 	bestChild := rootNode.Children[0]
 	for _, child := range rootNode.Children {
 
-		if mc.Verbose {
-			fmt.Printf("%s %.2f %d\n", child.Move, child.WinCount, child.VisitCount)
-		}
-		if child.VisitCount > bestChild.VisitCount {
+		// if mc.Verbose {
+		// 	fmt.Printf("%s %.2f %d\n", child.Move, child.WinCount, child.VisitCount)
+		// }
+		if mc.SelectionAlgorithm.SelectStat(child) > mc.SelectionAlgorithm.SelectStat(bestChild) {
 			bestChild = child
 		}
 	}
-
+	if mc.Verbose {
+		fmt.Printf("Iterations: %d, %s: %4f\n",
+			count,
+			mc.SelectionAlgorithm.StatName(),
+			mc.SelectionAlgorithm.SelectStat(bestChild))
+	}
 	return bestChild.Move
 }
 
